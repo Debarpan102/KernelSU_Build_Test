@@ -72,26 +72,26 @@ jobs:
         make O=out ARCH=arm64 CC=clang $BA_CMD $EX_CMD $DEFCONFIG
         make -j$(nproc --all) O=out ARCH=arm64 CC=clang $BA_CMD $EX_CMD $DX_CMD
     
+    - name: Check kernel output files  
+      run: |  
+        cd $GITHUB_WORKSPACE/kernel_workspace  
 
-      - name: Check kernel output files  
-        run: |  
-          cd $GITHUB_WORKSPACE/kernel_workspace  
+        # Check Kernel Image
+        if [ -f android-kernel/out/arch/arm64/boot/Image.gz-dtb ]; then  
+        echo "CHECK_IMAGE=true" >> $GITHUB_ENV  
+        else  
+        echo "Kernel output file is missing!"  
+        exit 1  
+        fi  
 
-          # Check Kernel Image
-          if [ -f android-kernel/out/arch/arm64/boot/Image.gz-dtb ]; then  
-          echo "CHECK_IMAGE=true" >> $GITHUB_ENV  
-          else  
-          echo "Kernel output file is missing!"  
-          exit 1  
-          fi  
+        # Check DTBO
+        if [ -f android-kernel/out/arch/arm64/boot/dtbo.img ]; then  
+        echo "CHECK_DTBO=true" >> $GITHUB_ENV  
+        else  
+        echo "DTBO image is missing!"  
+        exit 1  
+        fi
 
-          # Check DTBO
-          if [ -f android-kernel/out/arch/arm64/boot/dtbo.img ]; then  
-          echo "CHECK_DTBO=true" >> $GITHUB_ENV  
-          else  
-          echo "DTBO image is missing!"  
-          exit 1  
-          fi
     
     - name: Make Anykernel3
       if: env.CHECK_IMAGE == 'true'
