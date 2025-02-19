@@ -46,7 +46,7 @@ jobs:
     - name: Download kernel source
       run: |
         cd $GITHUB_WORKSPACE/kernel_workspace
-        git clone --recursive https://github.com/Debarpan102/kernel_oplus_RMX3461_22x -b susfs-254 android-kernel --depth=1
+        git clone --recursive https://github.com/Debarpan102/kernel_oplus_RMX3461 -b susfs-254 android-kernel --depth=1
         cd $GITHUB_WORKSPACE/kernel_workspace/android-kernel/scripts
         sed -i 's/ -dirty//g' setlocalversion
         
@@ -66,30 +66,44 @@ jobs:
         export KBUILD_BUILD_HOST=Github-Action
         export KBUILD_BUILD_USER=$(echo ${{ github.actor }} | tr A-Z a-z)
         BA_CMD="CLANG_TRIPLE=aarch64-linux-gnu-"
+        DX_CMD="Image.gz-dtb"
         EX_CMD="LD=ld.lld LLVM=1 LLVM_IAS=1"
         DEFCONFIG="vendor/lahaina-qgki_defconfig"
         make O=out ARCH=arm64 CC=clang $BA_CMD $EX_CMD $DEFCONFIG
-        make -j$(nproc --all) O=out ARCH=arm64 CC=clang $BA_CMD $EX_CMD 
+        make -j$(nproc --all) O=out ARCH=arm64 CC=clang $BA_CMD $EX_CMD $DX_CMD
     
-    - name: Check a kernel output files
-      run: |
-       cd $GITHUB_WORKSPACE/kernel_workspace
-       if [ -f android-kernel/out/arch/arm64/boot/Image ]; then
-           echo "CHECK_IMAGE=true" >> $GITHUB_ENV
-       else
-           echo "Kernel output file is empty"
-           exit 1
-       fi
-      
+
+      - name: Check kernel output files  
+  run: |  
+    cd $GITHUB_WORKSPACE/kernel_workspace  
+
+    # Check Kernel Image
+    if [ -f android-kernel/out/arch/arm64/boot/Image.gz-dtb ]; then  
+        echo "CHECK_IMAGE=true" >> $GITHUB_ENV  
+    else  
+        echo "Kernel output file is missing!"  
+        exit 1  
+    fi  
+
+    # Check DTBO
+    if [ -f android-kernel/out/arch/arm64/boot/dtbo.img ]; then  
+        echo "CHECK_DTBO=true" >> $GITHUB_ENV  
+    else  
+        echo "DTBO image is missing!"  
+        exit 1  
+    fi
+    
     - name: Make Anykernel3
       if: env.CHECK_IMAGE == 'true'
+      if: env.CHECK_DTBO == 'true'
       run: |
         cd $GITHUB_WORKSPACE/kernel_workspace
         git clone https://github.com/osm0sis/AnyKernel3 --depth=1 AnyKernel3
         sed -i 's/do.devicecheck=1/do.devicecheck=0/g' AnyKernel3/anykernel.sh
         sed -i 's!BLOCK=/dev/block/platform/omap/omap_hsmmc.0/by-name/boot;!BLOCK=auto;!g' AnyKernel3/anykernel.sh
         sed -i 's/IS_SLOT_DEVICE=0;/IS_SLOT_DEVICE=auto;/g' AnyKernel3/anykernel.sh
-        cp android-kernel/out/arch/arm64/boot/Image AnyKernel3/
+        cp android-kernel/out/arch/arm64/boot/Image.gz-dtb AnyKernel3/
+        cp android-kernel/out/arch/arm64/boot/dtbo.img Anykernel3/
         rm -rf AnyKernel3/.git* AnyKernel3/README.md
     
     - name: Upload image
@@ -97,7 +111,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: Image-${{ env.KSUVER }}
-        path: kernel_workspace/android-kernel/out/arch/arm64/boot/Image
+        path: kernel_workspace/android-kernel/out/arch/arm64/boot/Image.gz-dtb
 
     - name: Upload AnyKernel3
       if: env.CHECK_IMAGE == 'true'
