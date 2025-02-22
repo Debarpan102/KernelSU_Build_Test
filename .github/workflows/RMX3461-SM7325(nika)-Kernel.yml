@@ -94,7 +94,7 @@ jobs:
 
     
     - name: Make Anykernel3
-      if: env.CHECK_IMAGE == 'true'
+      if: env.CHECK_IMAGE == 'true' &&
           env.CHECK_DTBO == 'true'
       run: |
         cd $GITHUB_WORKSPACE/kernel_workspace
